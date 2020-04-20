@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "locale": "c",
+        "string": "c",
+        "__functional_03": "cpp",
+        "typeinfo": "c"
+    }
+}
