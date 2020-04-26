@@ -28,10 +28,16 @@ def read_data(line, length):
         data = ""
     return data
 
-def guessImageMime(magic):
+def guess_image_mime(magic):
     if magic.startswith('\xff\xd8'):
         return 'image/jpeg'
     elif magic.startswith('\x89PNG\r\n\x1a\r'):
         return 'image/png'
     else:
         return "image/jpg"
+
+def get_string_from_bytes(data):
+    try:
+        return str(data,'utf-8')
+    except:
+        return ""
