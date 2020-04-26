@@ -9,6 +9,7 @@ class display_manager(threading.Thread):
     display = None
     message = ""
     top = 0
+    count = 0
 
     def __init__(self, display, message = ""): 
         threading.Thread.__init__(self) 
@@ -19,29 +20,54 @@ class display_manager(threading.Thread):
 
               
     def run(self):
+
         while True:
             with self.pause_cond:
                 while self.paused:
                     self.pause_cond.wait()
-                self.manage()
-            sleep(.8)
+                if(self.top != 0 and self.count != self.top):
+                    self.manage()
+                else:
+                    self.display.set_cursor(0,1)
+                    self.display.message(datetime.now().strftime('%b %d  %H:%M:%S\n'))
+            sleep(.5)
 
 
     def manage(self):
+        print("count" + str(self.count) + " top:" + str(self.top))
         self.top = len(self.message)
-        count = 0
-        helper = self.message[0:15]
         self.display.clear()
+        helper = self.message[self.count:(self.count + 15)]
         self.display.message(helper + "\n" + datetime.now().strftime('%b %d  %H:%M:%S\n'))
-        for x in range(0, self.top):
-            self.display.move_right()
-            sleep(.1)
+        if(self.count != self.top):
+            for x in range(0, self.top):
+                if(self.paused):
+                    break
+                self.display.set_cursor(0,0)
+                self.display.message(helper)
+                sleep(.5)
+                if(x % 2 == 0): 
+                    self.display.set_cursor(0,1)
+                    self.display.message(datetime.now().strftime('%b %d  %H:%M:%S\n'))
+                helper = self.message[x:(x + 15)]
+            self.count = self.top
+        self.display.set_cursor(0,0)
+        self.display.message(self.message[0:15])
+
     
     def pause(self):
+        self.message = ""
+        self.top = 0
+        self.count = 0
+        self.display.set_cursor(0,0)
+        self.display.message(self.message)
+        self.display.set_cursor(0,1)
+        self.display.message(datetime.now().strftime('%b %d  %H:%M:%S\n'))
         self.paused = True
         self.pause_cond.acquire()
 
     def resume(self):
+        self.count = 0
         self.top = len(self.message)
         self.paused = False
         self.pause_cond.notify()

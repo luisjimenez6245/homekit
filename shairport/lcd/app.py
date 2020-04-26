@@ -5,7 +5,6 @@ from Adafruit_CharLCD import Adafruit_CharLCD
 from json import dumps
 from DisplayManager import display_manager
 
-lcd = None
 song = {}
 device_info = {}
 config = {}
@@ -14,11 +13,11 @@ th_display = None
 def send_song():
     res = {'song' : song, 'device' : device_info}
     print(dumps(res))
-    lcd.clear()
-    send_message(song["title"] + " - " + song["artist"]  + " - " + song["album"] +"\n" )
+    send_message(song["title"] + " - " + song["artist"]  + " - " + song["album"])
     return
 
 def send_message(message):
+    message += "               "
     th_display.pause()
     th_display.message = message
     th_display.resume()
@@ -28,7 +27,8 @@ def manage_image(length, data):
     return
 
 def manage_volume(data):
-    print()
+    device_info["vol"] = data
+    print(device_info)
 
 def manage_song(code, data):
     if (code == "asal"):
@@ -54,7 +54,7 @@ def manage_shair(code, data):
     elif(code =="daid"):
         device_info["daid"] = data
     elif(code == "pvol"):
-        device_info["vol"] = data
+        manage_volume(data)
     elif(code == "pend"):
         device_info["satus"] = 'END'
     elif(code == "pfls"):
@@ -105,9 +105,8 @@ if __name__ == "__main__":
         lcd = Adafruit_CharLCD(rs=26, en=19,
                         d4=13, d5=6, d6=5, d7=11,
                         cols=16, lines=2)
-        lcd.clear()
-        lcd.message("prueba")
         th_display = display_manager(lcd)
+        th_display.start()
         fi = sys.stdin
         manager()
     except KeyboardInterrupt:
