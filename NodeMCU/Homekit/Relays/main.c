@@ -16,7 +16,6 @@
 
 #define MAX_SERVICES 20
 
-
 static void wifi_init() {
     struct sdk_station_config wifi_config = {
         .ssid = WIFI_SSID,
@@ -28,14 +27,13 @@ static void wifi_init() {
     sdk_wifi_station_connect();
 }
 
-
 const int led_gpio = 2;
 
 const uint8_t relay_gpios[] = {
   12, 5, 14, 13
 };
-const size_t relay_count = sizeof(relay_gpios) / sizeof(*relay_gpios);
 
+const size_t relay_count = sizeof(relay_gpios) / sizeof(*relay_gpios);
 
 void relay_write(int relay, bool on) {
     printf("Relay %d %s\n", relay, on ? "ON" : "OFF");
@@ -57,20 +55,20 @@ void gpio_init() {
 }
 
 void lamp_identify_task(void *_args) {
-    relay_write(relay_gpios[0], true);
+    relay_write(led_gpio, true);
 
     for (int i=0; i<3; i++) {
         for (int j=0; j<2; j++) {
-            relay_write(relay_gpios[0], true);
+            relay_write(led_gpio, true);
             vTaskDelay(100 / portTICK_PERIOD_MS);
-            relay_write(relay_gpios[0], false);
+            relay_write(led_gpio, false);
             vTaskDelay(100 / portTICK_PERIOD_MS);
         }
 
         vTaskDelay(250 / portTICK_PERIOD_MS);
     }
 
-    relay_write(relay_gpios[0], true);
+    relay_write(led_gpio, true);
 
     vTaskDelete(NULL);
 }
@@ -84,7 +82,6 @@ void relay_callback(homekit_characteristic_t *ch, homekit_value_t value, void *c
     uint8_t *gpio = context;
     relay_write(*gpio, value.bool_value);
 }
-
 
 homekit_accessory_t *accessories[2];
 
@@ -121,8 +118,8 @@ void init_accessory() {
         NULL
     });
 
-    for (int i=0; i < relay_count - 1; i++) {
-        int relay_name_len = snprintf(NULL, 0, "Relay %d", i + 1);
+    for (int i=0; i < (relay_count/2); i++) {
+        int relay_name_len = snprintf(NULL, 0, "LAMP %d", i + 1);
         char *relay_name_value = malloc(relay_name_len+1);
         snprintf(relay_name_value, relay_name_len+1, "Relay %d", i + 1);
 
@@ -137,21 +134,23 @@ void init_accessory() {
             NULL
         });
     }
-    int relay_name_len = snprintf(NULL, 0, "RAAAAA %d", 3 + 1);
-        char *relay_name_value = malloc(relay_name_len+1);
-        snprintf(relay_name_value, relay_name_len+1, "RAAA %d", 3 + 1);
 
-        *(s++) = NEW_HOMEKIT_SERVICE(SWITCH, .characteristics=(homekit_characteristic_t*[]) {
+    for (int i = 2; i < relay_count ; i++) {
+        int relay_name_len = snprintf(NULL, 0, "OUTLET %d", i + 1);
+        char *relay_name_value = malloc(relay_name_len+1);
+        snprintf(relay_name_value, relay_name_len + 1, "Relay %d", i + 1);
+
+        *(s++) = NEW_HOMEKIT_SERVICE(OUTLET, .characteristics=(homekit_characteristic_t*[]) {
             NEW_HOMEKIT_CHARACTERISTIC(NAME, relay_name_value),
             NEW_HOMEKIT_CHARACTERISTIC(
                 ON, true,
                 .callback=HOMEKIT_CHARACTERISTIC_CALLBACK(
-                    relay_callback, .context=(void*)&relay_gpios[3]
+                    relay_callback, .context=(void*)&relay_gpios[i]
                 ),
             ),
             NULL
         });
-
+    }
     *(s++) = NULL;
 
     accessories[0] = NEW_HOMEKIT_ACCESSORY(.category=homekit_accessory_category_other, .services=services);

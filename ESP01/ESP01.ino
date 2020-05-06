@@ -22,7 +22,6 @@ void setup() {
 void loop() {
   WiFiClient client = server.available();
   if (!client) {
-    Serial.println("");
     return;
   }
   
@@ -30,15 +29,22 @@ void loop() {
     delay(1);
   }
   
-  String req = client.readStringUntil('\r').toLowerCase();
-  req = req.replace("http/1.1", "").replace("get", "").replace("/", "").replace(" ","");
-  String s = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n<!DOCTYPE HTML>\r\n<html>\r\n";
+  String req = client.readStringUntil('\r');
+  req.toLowerCase();
+  req.replace("http/1.1", "");
+  req.replace("get", "");
+  req.replace(" ", "");
+  req.replace("/", "");
+  String res = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n<!DOCTYPE HTML>\r\n<html>\r\n";
   client.flush();
-  Serial.print(req);
-  s += Serial.readString();
+  Serial.println(req);
+  while (Serial.available())
+  {
+    res += Serial.readString();
+  }
   client.flush();
-  s += "</html>\n";
+  res += "</html>\n";
 
-  client.print(s);
+  client.print(res);
   delay(10);
 }
