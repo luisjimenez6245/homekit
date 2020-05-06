@@ -11,14 +11,21 @@ Adafruit_NeoPixel pixels(NUMPIXELS, PIXEL_PIN, NEO_GRB + NEO_KHZ800);
 OneWire onewire(3);
 
 uint32_t color = 16777215;
-int brightness = 250;
+int brightness = 180;
 boolean pixel_on = false;
-float ant_temp = 0;
 float temp = 0;
 void manage_pixel()
 {
   if (pixel_on)
   {
+    if (color > 16777215)
+    {
+      color = 16777215;
+    }
+    if (color < 1)
+    {
+      color = 1;
+    }
     if (brightness > 255)
     {
       brightness = 255;
@@ -30,12 +37,13 @@ void manage_pixel()
     for (int i = 0; i < NUMPIXELS; i++)
     {
       pixels.setPixelColor(i, color);
-      delay(50);
-      pixels.show();
     }
+    pixels.setBrightness(brightness);
   }
   else
   {
+    color = 16777215;
+    brightness = 0;
     pixels.clear();
   }
   pixels.show();
@@ -49,7 +57,7 @@ bool sensor_read(float *result)
   onewire.reset();
   onewire.skip();
   onewire.write(0x44);
-  delay(1000);
+  delay(500);
   if (!onewire.reset())
     return false;
   onewire.skip();
@@ -65,12 +73,8 @@ void read_temperature()
 {
   float temperature;
   if (sensor_read(&temperature))
-  {    
-    temp = temperature;
-  }
-  else
   {
-    temp = -100;
+    temp = temperature;
   }
 }
 
@@ -81,12 +85,11 @@ void setup()
   pixels.begin();
   pixels.clear();
   pixels.show();
-  read_temperature();
+  delay(4000);
 }
 
 void manage_message(String message)
 {
-    
   if (message.indexOf("temperature") != -1)
   {
     Serial.println(temp);
@@ -95,37 +98,26 @@ void manage_message(String message)
   {
     Serial.println(pixel_on ? "1" : "0");
   }
-  else if (message.indexOf("lamp") != -1)
-  {
-    pixel_on = (message.indexOf("on") != -1);
-    manage_pixel();
-  }
   else if (message.indexOf("brightness") != -1)
   {
     message.replace("brightness", "");
     pixel_on = true;
     brightness = (atoi(message.c_str()) * 255) / 100;
-    Serial.print("brightness: ");
-    Serial.println(brightness);
-    pixels.setBrightness(brightness);  
-    pixels.show();
+    manage_pixel();
+  }
+  else if (message.indexOf("lamp") != -1)
+  {
+    pixel_on = (message.indexOf("on") != -1);
+    manage_pixel();
+    Serial.println(pixel_on ? "1" : "0");
   }
   else if (message.indexOf("color") != -1)
   {
     message.replace("color", "");
     message.toUpperCase();
     pixel_on = true;
-    Serial.print("color: ");
     color = (uint32_t)strtol(message.c_str(), NULL, 16);
-    Serial.println(color, HEX);
-    if (color > 16777215)
-    {
-      color = 16777215;
-    }
-    if (color < 1)
-    {
-      color = 1;
-    }
+    Serial.println(color);
     manage_pixel();
   }
   else
