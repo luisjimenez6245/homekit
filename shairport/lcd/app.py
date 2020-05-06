@@ -17,7 +17,7 @@ def send_song():
     return
 
 def send_message(message):
-    message += "               "
+    message += " "
     th_display.pause()
     th_display.message = message
     th_display.resume()
