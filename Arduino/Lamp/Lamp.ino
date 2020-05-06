@@ -10,30 +10,37 @@
 Adafruit_NeoPixel pixels(NUMPIXELS, PIXEL_PIN, NEO_GRB + NEO_KHZ800);
 OneWire onewire(3);
 
-int red_value = 255;
-int green_value = 255;
-int blue_value = 255;
-int brigthness = 180;
+uint32_t color = 16777215;
+int brightness = 180;
 boolean pixel_on = false;
 
 void manage_pixel()
 {
   if (pixel_on)
   {
+    if(color > 16777215){
+      color = 16777215;
+    }
+    if(color < 1){
+      color = 1;
+    }
+    if(brightness > 255){
+      brightness = 255;
+    }
     for (int i = 0; i < NUMPIXELS; i++)
     {
-      pixels.setPixelColor(i, pixels.Color(red_value, green_value, blue_value, brigthness ));
-      pixels.show();
+      pixels.setPixelColor(i, color);
+      
     }
+    pixels.setBrightness(brightness);
   }
   else
   {
-    for (int i = 0; i < NUMPIXELS; i++)
-    {
-      pixels.setPixelColor(i, pixels.Color(0, 0, 0));
-      pixels.show();
-    }
+    color = 16777215;
+    brightness = 0;
+    pixels.clear();
   }
+  pixels.show();
 }
 
 bool sensor_read(float *result)
@@ -73,11 +80,14 @@ void setup()
   Serial.begin(115200);
   pixels.begin();
   pixels.clear();
-  delay(5000);
+  pixels.show();
+  //Serial.println(pixels.Color(255, 255, 255));
+  delay(4000);
 }
 
 void manage_message(String message){
   if(message.equals("temperature")){
+      Serial.println("sdjsjd");
       read_temperature();
     }
     else{
@@ -86,17 +96,37 @@ void manage_message(String message){
         }
         else{
           if(message.equals("statusbrightness")){
-            Serial.println((brigthness*100)/255);
+            Serial.println((brightness*100)/255);
           }
           else{
             if(message.equals("statuscolor")){
-              Serial.println(pixels.Color(red_value, green_value, blue_value), HEX);
+              Serial.println(color, HEX);
             }
             else{
               if(message.indexOf("lamp") != -1 ){
                 pixel_on = (message.indexOf("on") != -1 );
                 manage_pixel();
                 Serial.println(pixel_on ? "1": "0");
+              }else{
+                if(message.indexOf("brightness") != -1 ){
+                  message.replace("brightness", "");
+                  pixel_on = true;
+                  brightness = (atoi(message.c_str()) * 255)/100 ;
+                  manage_pixel();
+                  Serial.println((brightness*100)/255);
+                }
+                else{
+                  if(message.indexOf("color") != -1 ){
+                    message.replace("color", "");
+                    message.toUpperCase();
+                    pixel_on = true;
+                    color = (uint32_t)strtol(message.c_str(), NULL, 16);
+                    manage_pixel();
+                    Serial.println(color, HEX);
+                  }
+                  else{
+                  }
+                }
               }
             }
           }
@@ -113,6 +143,7 @@ void loop()
   }
   if (message.length() > 0)
   {
+    Serial.println(message);
     manage_message(message);
   }
   /*
