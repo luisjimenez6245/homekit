@@ -55,20 +55,20 @@ void gpio_init() {
 }
 
 void lamp_identify_task(void *_args) {
-    relay_write(led_gpio, true);
+    led_write(true);
 
     for (int i=0; i<3; i++) {
         for (int j=0; j<2; j++) {
-            relay_write(led_gpio, true);
+            led_write(false);
             vTaskDelay(100 / portTICK_PERIOD_MS);
-            relay_write(led_gpio, false);
+            led_write(true);
             vTaskDelay(100 / portTICK_PERIOD_MS);
         }
 
         vTaskDelay(250 / portTICK_PERIOD_MS);
     }
 
-    relay_write(led_gpio, true);
+    led_write(false);
 
     vTaskDelete(NULL);
 }
@@ -87,7 +87,7 @@ homekit_accessory_t *accessories[2];
 
 homekit_server_config_t config = {
     .accessories = accessories,
-    .password = "111-11-111"
+    .password = "563-09-221"
 };
 
 void on_wifi_ready() {
