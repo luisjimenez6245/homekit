@@ -4,6 +4,7 @@ const char *ssid = "Mujica";
 const char *password = "Mug2215562.";
 
 WiFiServer server(80);
+WiFiServer server2(5000);
 uint32_t color = 16777215;
 int brightness = 180;
 boolean pixel_on = false;
@@ -13,6 +14,7 @@ void setup()
 {
   Serial.begin(115200);
   delay(1000);
+  WiFi.mode(WIFI_STA);
   Serial.setTimeout(2000);
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED)
@@ -23,6 +25,7 @@ void setup()
   manage_arduino();
   delay(5000);
   server.begin();
+  server2.begin();
 }
 
 void manage_wifi_client(WiFiClient client)
@@ -96,14 +99,7 @@ void manage_arduino()
   Serial.flush();
 }
 
-void loop()
-{
-  WiFiClient client = server.available();
-  if (!client)
-  {
-    return;
-  }
-
+void manage_client(WiFiClient  client){
   while (!client.available())
   {
     delay(1);
@@ -120,4 +116,26 @@ void loop()
   manage_wifi_client(client);
   client.flush();
   manage_arduino();
+}
+
+void loop()
+{
+  WiFiClient client = server.available();
+  WiFiClient client2 = server2.available();
+
+  if (!client && !client2)
+  {
+    return;
+  }
+  else{
+      if(client){
+        Serial.println("client1");
+        manage_client(client);
+        }else{        Serial.println("client2");
+                  manage_client(client2);
+          }
+ }
+
+  
+  
 }
