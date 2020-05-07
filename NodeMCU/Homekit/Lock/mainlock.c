@@ -21,18 +21,10 @@
 
 #include "button.h"
 
-// The GPIO pin that is connected to a relay
 const int relay_gpio = 12;
-// The GPIO pin that is connected to a LED
-// const int led_gpio = 13;
 const int led_gpio = 2;
-// The GPIO pin that is connected to a button
-// const int button_gpio = 0;
 const int button_gpio = 0;
-
-// Timeout in seconds to open lock for
-const int unlock_period = 2;  // 5 seconds
-// Which signal to send to relay to open the lock (0 or 1)
+const int unlock_period = 2;
 const int relay_open_signal = 0;
 
 void lock_lock();
@@ -55,22 +47,11 @@ void reset_configuration_task() {
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
 
-    printf("Resetting Wifi Config\n");
-
     wifi_config_reset();
-
     vTaskDelay(1000 / portTICK_PERIOD_MS);
-
-    printf("Resetting HomeKit Config\n");
-
     homekit_server_reset();
-
     vTaskDelay(1000 / portTICK_PERIOD_MS);
-
-    printf("Restarting\n");
-
     sdk_system_restart();
-
     vTaskDelete(NULL);
 }
 
@@ -102,7 +83,6 @@ void button_callback(uint8_t gpio, button_event_t event) {
 }
 
 void lock_identify_task(void *_args) {
-    // We identify the Sonoff by Flashing it's LED.
     for (int i=0; i<3; i++) {
         for (int j=0; j<2; j++) {
             led_write(true);

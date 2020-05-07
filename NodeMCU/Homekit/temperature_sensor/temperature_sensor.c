@@ -13,6 +13,7 @@
 #include <ds18b20/ds18b20.h>
 
 #define SENSOR_PIN 5
+
 #ifndef SENSOR_PIN
 #error SENSOR_PIN is not specified
 #endif
@@ -23,7 +24,6 @@ static void wifi_init() {
         .ssid = WIFI_SSID,
         .password = WIFI_PASSWORD,
     };
-
     sdk_wifi_set_opmode(STATION_MODE);
     sdk_wifi_station_set_config(&wifi_config);
     sdk_wifi_station_connect();
@@ -37,26 +37,22 @@ void temperature_sensor_identify(homekit_value_t _value) {
 homekit_characteristic_t temperature = HOMEKIT_CHARACTERISTIC_(CURRENT_TEMPERATURE, 0);
 homekit_characteristic_t humidity    = HOMEKIT_CHARACTERISTIC_(CURRENT_RELATIVE_HUMIDITY, 0);
 
-
 void temperature_sensor_task(void *_args) {
     gpio_set_pullup(SENSOR_PIN, false, false);
-
     float humidity_value, temperature_value;
     while (1) {
-        bool success = dht_read_float_data(
-            DHT_TYPE_DHT11, SENSOR_PIN,
-            &humidity_value, &temperature_value
-        );
+        bool success = ds18b20_measure(
+            SENSOR_PIN, 
+            DS18B20_ANY,
+        true);
         if (success) {
-            temperature.value.float_value = temperature_value;
+            temperature.value.float_value = ds18b20_read_temperature(SENSOR_PIN,
+             DS18B20_ANY);
             humidity.value.float_value = humidity_value;
-
             homekit_characteristic_notify(&temperature, HOMEKIT_FLOAT(temperature_value));
-            homekit_characteristic_notify(&humidity, HOMEKIT_FLOAT(humidity_value));
         } else {
             printf("Couldnt read data from sensor\n");
         }
-
         vTaskDelay(3000 / portTICK_PERIOD_MS);
     }
 }
