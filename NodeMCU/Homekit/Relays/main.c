@@ -7,16 +7,28 @@
 #include <esp8266.h>
 #include <FreeRTOS.h>
 #include <task.h>
+
 #include <homekit/homekit.h>
 #include <homekit/characteristics.h>
 
 #include "wifi.h"
-#include "button.h"
+
 
 #define MAX_SERVICES 20
 
+static void wifi_init() {
+    struct sdk_station_config wifi_config = {
+        .ssid = WIFI_SSID,
+        .password = WIFI_PASSWORD,
+    };
+
+    sdk_wifi_set_opmode(STATION_MODE);
+    sdk_wifi_station_set_config(&wifi_config);
+    sdk_wifi_station_connect();
+}
+
 const int led_gpio = 2;
-const int button_gpio = 16;
+
 const uint8_t relay_gpios[] = {
   12, 5, 14, 13
 };
@@ -32,65 +44,19 @@ void led_write(bool on) {
     gpio_write(led_gpio, on ? 0 : 1);
 }
 
-static void wifi_init() {
-    struct sdk_station_config wifi_config = {
-        .ssid = WIFI_SSID,
-        .password = WIFI_PASSWORD,
-    };
-
-    sdk_wifi_set_opmode(STATION_MODE);
-    sdk_wifi_station_set_config(&wifi_config);
-    sdk_wifi_station_connect();
-}
-
-void reset_configuration_task() {
-    //Flash the LED first before we start the reset
-    for (int i=0; i<3; i++) {
-        led_write(true);
-        vTaskDelay(100 / portTICK_PERIOD_MS);
-        led_write(false);
-        vTaskDelay(100 / portTICK_PERIOD_MS);
-    }
-
-    wifi_config_reset();
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
-    homekit_server_reset();
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
-    sdk_system_restart();
-    vTaskDelete(NULL);
-}
-
-void reset_configuration() {
-    printf("Resetting configuration\n");
-    xTaskCreate(reset_configuration_task, "Reset configuration", 256, NULL, 2, NULL);
-}
-
 void gpio_init() {
     gpio_enable(led_gpio, GPIO_OUTPUT);
     led_write(false);
 
     for (int i=0; i < relay_count; i++) {
         gpio_enable(relay_gpios[i], GPIO_OUTPUT);
-        relay_write(relay_gpios[i], false);
-    }
-}
-
-void button_callback(uint8_t gpio, button_event_t event) {
-    switch (event) {
-        case button_event_single_press:
-            printf("Toggling relay\n");
-            lock_unlock();
-            break;
-        case button_event_long_press:
-            reset_configuration();
-            break;
-        default:
-            printf("Unknown button event: %d\n", event);
+        relay_write(relay_gpios[i], true);
     }
 }
 
 void lamp_identify_task(void *_args) {
     led_write(true);
+
     for (int i=0; i<3; i++) {
         for (int j=0; j<2; j++) {
             led_write(false);
@@ -98,9 +64,12 @@ void lamp_identify_task(void *_args) {
             led_write(true);
             vTaskDelay(100 / portTICK_PERIOD_MS);
         }
+
         vTaskDelay(250 / portTICK_PERIOD_MS);
     }
+
     led_write(false);
+
     vTaskDelete(NULL);
 }
 
@@ -124,6 +93,7 @@ homekit_server_config_t config = {
 void on_wifi_ready() {
     homekit_server_init(&config);
 }
+
 
 void init_accessory() {
     uint8_t macaddr[6];
@@ -156,7 +126,7 @@ void init_accessory() {
         *(s++) = NEW_HOMEKIT_SERVICE(LIGHTBULB, .characteristics=(homekit_characteristic_t*[]) {
             NEW_HOMEKIT_CHARACTERISTIC(NAME, relay_name_value),
             NEW_HOMEKIT_CHARACTERISTIC(
-                OFF, false,
+                ON, true,
                 .callback=HOMEKIT_CHARACTERISTIC_CALLBACK(
                     relay_callback, .context=(void*)&relay_gpios[i]
                 ),
@@ -173,7 +143,7 @@ void init_accessory() {
         *(s++) = NEW_HOMEKIT_SERVICE(OUTLET, .characteristics=(homekit_characteristic_t*[]) {
             NEW_HOMEKIT_CHARACTERISTIC(NAME, relay_name_value),
             NEW_HOMEKIT_CHARACTERISTIC(
-                OFF, false,
+                ON, true,
                 .callback=HOMEKIT_CHARACTERISTIC_CALLBACK(
                     relay_callback, .context=(void*)&relay_gpios[i]
                 ),

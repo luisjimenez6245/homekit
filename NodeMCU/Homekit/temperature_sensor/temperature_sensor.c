@@ -12,12 +12,15 @@
 
 #include <ds18b20/ds18b20.h>
 
-#define SENSOR_PIN 5
+#define SENSOR_PIN 4
+#define DEVICE_NUMBER 1
 
 #ifndef SENSOR_PIN
 #error SENSOR_PIN is not specified
 #endif
 
+int sensor_number = 0;
+ds18b20_addr_t sensor_list[DEVICE_NUMBER];
 
 static void wifi_init() {
     struct sdk_station_config wifi_config = {
@@ -39,21 +42,22 @@ homekit_characteristic_t humidity    = HOMEKIT_CHARACTERISTIC_(CURRENT_RELATIVE_
 
 void temperature_sensor_task(void *_args) {
     gpio_set_pullup(SENSOR_PIN, false, false);
-    float humidity_value, temperature_value;
+    float temperature_value;
     while (1) {
         bool success = ds18b20_measure(
             SENSOR_PIN, 
-            DS18B20_ANY,
+            sensor_list,
         true);
         if (success) {
-            temperature.value.float_value = ds18b20_read_temperature(SENSOR_PIN,
-             DS18B20_ANY);
+            temperature_value = ds18b20_read_temperature(SENSOR_PIN, sensor_list);
+            temperature.value.float_value = temperature_value;
             humidity.value.float_value = humidity_value;
             homekit_characteristic_notify(&temperature, HOMEKIT_FLOAT(temperature_value));
+            homekit_characteristic_notify(&humidity, HOMEKIT_FLOAT(0));
         } else {
             printf("Couldnt read data from sensor\n");
         }
-        vTaskDelay(3000 / portTICK_PERIOD_MS);
+        vTaskDelay(6000 / portTICK_PERIOD_MS);
     }
 }
 
@@ -78,6 +82,11 @@ homekit_accessory_t *accessories[] = {
             &temperature,
             NULL
         }),
+        HOMEKIT_SERVICE(HUMIDITY_SENSOR, .characteristics=(homekit_characteristic_t*[]) {
+            HOMEKIT_CHARACTERISTIC(NAME, "Humidity Sensor"),
+            &humidity,
+            NULL
+        }),
         NULL
     }),
     NULL
@@ -90,9 +99,13 @@ homekit_server_config_t config = {
 
 void user_init(void) {
     uart_set_baud(0, 115200);
-
+    sensor_number =  ds18b20_scan_devices(SENSOR_PIN, sensor_list, DEVICE_NUMBER);
+    while(sensor_number != DEVICE_NUMBER)
+    {
+        printf("%i devices not found", (DEVICE_NUMBER - sensor_number));
+        sensor_number =  ds18b20_scan_devices(SENSOR_PIN, sensor_list, DEVICE_NUMBER);
+    }
     wifi_init();
     temperature_sensor_init();
     homekit_server_init(&config);
 }
-
