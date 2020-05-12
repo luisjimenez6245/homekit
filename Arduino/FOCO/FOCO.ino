@@ -6,15 +6,8 @@
 
 boolean led_state = false;
 int last_switch_state = 0;
-
-void manage_led(){
-  /*if(led_state){
-      Serial.println("Prendido\n");
-  }
-  else{    
-    Serial.println("Apagado\n");
-  }*/
-}
+unsigned long last_debounce_time = 0;  
+unsigned long debounce_delay = 60;
 
 void setup() {
     Serial.begin(115200);
@@ -31,29 +24,30 @@ void setup() {
 
 void manage_esp(){
     boolean actual_led_state = !digitalRead(PIN_ESP_READ);
-    //Serial.print("esp_state:");
-    //Serial.println(actual_led_state);  
-    digitalWrite(PIN_RELAY,actual_led_state);     
-    if(actual_led_state != led_state){
-      led_state = actual_led_state;
-      manage_led();
+    delay(100);
+    if(actual_led_state == !digitalRead(PIN_ESP_READ)){
+      digitalWrite(PIN_RELAY,actual_led_state);     
+      if(actual_led_state != led_state){
+        led_state = actual_led_state;
+      }
     }
-    //delay(2000);
 }
 
 
 void loop() {
   int switch_state = digitalRead(PIN_SWITCH);
-  //Serial.print("switch_state:");
-  //Serial.println(switch_state);
   if(switch_state != last_switch_state){
-    Serial.println("cambie");
-    last_switch_state = switch_state;
-    digitalWrite(PIN_ESP_WRITE, LOW);
-    delay(100);
-    digitalWrite(PIN_ESP_WRITE, HIGH);
+    if(last_debounce_time == 0){
+      last_debounce_time = millis();
+    }
+    if ((millis() - last_debounce_time) > debounce_delay) {
+      last_debounce_time = 0;
+      Serial.println("cambie");
+      last_switch_state = switch_state;
+      digitalWrite(PIN_ESP_WRITE, LOW);
+      delay(100);
+      digitalWrite(PIN_ESP_WRITE, HIGH);
+    }
   }
   manage_esp();
- // Serial.print("led_state:");
- // Serial.println(led_state);
 }
