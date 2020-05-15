@@ -8,13 +8,11 @@
 #include <FreeRTOS.h>
 #include <task.h>
 #include <toggle.h>
-
 #include <homekit/homekit.h>
 #include <homekit/characteristics.h>
 
 #include "wifi.h"
 
-#define SENSOR_PIN 4
 
 #define MAX_SERVICES 20
 
@@ -30,22 +28,18 @@ static void wifi_init() {
     sdk_wifi_station_connect();
 }
 
-
+const int sensor_gpio = 4;
 const int led_gpio = 2;
 
 const uint8_t relay_gpios[] = {
   12, 5, 14, 13
 };
-
 const size_t relay_count = sizeof(relay_gpios) / sizeof(*relay_gpios);
+
 
 void relay_write(int relay, bool on) {
     printf("Relay %d %s\n", relay, on ? "ON" : "OFF");
-    gpio_write(relay, on ? 1 : 0);
-}
-
-void led_write(bool on) {
-    gpio_write(led_gpio, on ? 0 : 1);
+    gpio_write(relay, on ? 0 : 1);
 }
 
 homekit_characteristic_t occupancy_detected = HOMEKIT_CHARACTERISTIC_(OCCUPANCY_DETECTED, 0);
@@ -55,6 +49,9 @@ void sensor_callback(bool high, void *context) {
     homekit_characteristic_notify(&occupancy_detected, occupancy_detected.value);
 }
 
+void led_write(bool on) {
+    gpio_write(led_gpio, on ? 0 : 1);
+}
 
 void gpio_init() {
     gpio_enable(led_gpio, GPIO_OUTPUT);
@@ -64,13 +61,13 @@ void gpio_init() {
         gpio_enable(relay_gpios[i], GPIO_OUTPUT);
         relay_write(relay_gpios[i], true);
     }
-    if (toggle_create(SENSOR_PIN, sensor_callback, NULL)) {
+    if (toggle_create(sensor_gpio, sensor_callback, NULL)) {
         printf("Failed to initialize sensor\n");
     }
 }
 
 void lamp_identify_task(void *_args) {
-            led_write(true);
+    led_write(true);
 
     for (int i=0; i<3; i++) {
         for (int j=0; j<2; j++) {
@@ -83,8 +80,7 @@ void lamp_identify_task(void *_args) {
         vTaskDelay(250 / portTICK_PERIOD_MS);
     }
 
-             led_write(false);
-
+    led_write(false);
 
     vTaskDelete(NULL);
 }
@@ -104,7 +100,7 @@ homekit_accessory_t *accessories[2];
 
 homekit_server_config_t config = {
     .accessories = accessories,
-    .password = "111-11-111"
+    .password = "563-09-221"
 };
 
 void on_wifi_ready() {
@@ -139,8 +135,7 @@ void init_accessory() {
         int relay_name_len = snprintf(NULL, 0, "Relay %d", i + 1);
         char *relay_name_value = malloc(relay_name_len+1);
         snprintf(relay_name_value, relay_name_len+1, "Relay %d", i + 1);
-
-        *(s++) = NEW_HOMEKIT_SERVICE(LIGHTBULB, .characteristics=(homekit_characteristic_t*[]) {
+        *(s++) = NEW_HOMEKIT_SERVICE(OUTLET, .characteristics=(homekit_characteristic_t*[]) {
             NEW_HOMEKIT_CHARACTERISTIC(NAME, relay_name_value),
             NEW_HOMEKIT_CHARACTERISTIC(
                 ON, true,
@@ -151,8 +146,9 @@ void init_accessory() {
             NULL
         });
     }
-    *(s++) = HOMEKIT_SERVICE(OCCUPANCY_SENSOR, .primary=true, .characteristics=(homekit_characteristic_t*[]) {
-            HOMEKIT_CHARACTERISTIC(NAME, "Occupancy Sensor"),
+ 
+   *(s++) = NEW_HOMEKIT_SERVICE(OCCUPANCY_SENSOR, .characteristics=(homekit_characteristic_t*[]) {
+            NEW_HOMEKIT_CHARACTERISTIC(NAME, "Occupancy Sensor"),
             &occupancy_detected,
             NULL
         });
