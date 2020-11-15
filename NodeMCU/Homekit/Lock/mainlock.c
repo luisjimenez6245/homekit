@@ -14,10 +14,9 @@
 #include <task.h>
 #include <etstimer.h>
 #include <esplibs/libmain.h>
-
 #include <homekit/homekit.h>
 #include <homekit/characteristics.h>
-#include <wifi_config.h>
+#include "wifi.h"
 
 #include "button.h"
 
@@ -46,8 +45,6 @@ void reset_configuration_task() {
         led_write(false);
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
-
-    wifi_config_reset();
     vTaskDelay(1000 / portTICK_PERIOD_MS);
     homekit_server_reset();
     vTaskDelay(1000 / portTICK_PERIOD_MS);
@@ -240,12 +237,25 @@ void create_accessory_name() {
     name.value = HOMEKIT_STRING(name_value);
 }
 
+static void wifi_init() {
+    struct sdk_station_config wifi_config = {
+        .ssid = WIFI_SSID,
+        .password = WIFI_PASSWORD,
+    };
+
+    sdk_wifi_set_opmode(STATION_MODE);
+    sdk_wifi_station_set_config(&wifi_config);
+    sdk_wifi_station_connect();
+}
+
 void user_init(void) {
     uart_set_baud(0, 115200);
 
     create_accessory_name();
-
-    wifi_config_init("lock", NULL, on_wifi_ready);
+    printf("sdaskjdnajsnd");
+    wifi_init();
+    on_wifi_ready();
+    printf("asss");
     gpio_init();
     lock_init();
 
